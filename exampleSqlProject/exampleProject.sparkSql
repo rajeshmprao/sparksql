@@ -1,0 +1,11 @@
+<project>
+    <name>Example Project</name>
+    <author>Hemanth Sandrana</author>
+    <build>
+        <Include type="Predeployment">./example/Predeployment</Include>
+        <Include type="Postdeployment">./example/Postdeployment</Include>
+        <Include type="Schema">./example/Schema</Include>
+        <Include type="tables">/home/sparksql/workspace/repos/exampleSqlProject/example/tables</Include>
+        <Include type="values">./values.json</Include>
+    </build>
+</project>
