@@ -9,4 +9,10 @@ object JsonHelper{
     val jsonString = write(obj)
     jsonString
   }
+
+  def fromJSON[T](jsonString: String)(implicit m: Manifest[T]): T = {
+    implicit val formats = DefaultFormats
+    val obj = parse(jsonString)
+    obj.extract[T]
+  }
 }

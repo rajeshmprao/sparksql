@@ -11,5 +11,6 @@
     <modules>
         <module>common</module>
         <module>buildsql</module>
+        <module>DeploymentManager</module>
     </modules>
 </project>
