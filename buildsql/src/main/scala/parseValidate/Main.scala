@@ -1,8 +1,10 @@
 package parseValidate
 
 import org.apache.spark.sql.SparkSession
-import java.io.{File, FileWriter}
-import java.nio.file.Paths
+import java.io.{BufferedWriter, File, FileWriter}
+import java.nio.file.{Files, Paths}
+
+import org.apache.commons.io.FileUtils
 
 import scala.util.matching.Regex
 import scala.xml.XML
@@ -28,8 +30,7 @@ object Main{
     val jsonString = JsonHelper.toJSON(container)
     println(jsonString)
     println(Console.BLUE + "Build Succeeded.")
-    val outputFile = new FileWriter(Paths.get(projectRootFilePath,"./bin/output.json").toUri.toString)
-    outputFile.write(jsonString)
+    this.writeOutput(projectRootFilePath, jsonString)
   }
 
   def validateProjectFile(filename: String): Unit = {
@@ -85,13 +86,26 @@ object Main{
     good ++ these.filter(_.isDirectory).flatMap(recursiveListFiles(_,r))
   }
 
-  def getSparkSession:SparkSession =
-  {
+  def getSparkSession:SparkSession = {
     val sparkSession = SparkSession.builder()
       .appName("parserApp")
       .master("local")
       .getOrCreate()
     sparkSession.sparkContext.setLogLevel("ERROR")
     sparkSession
+  }
+
+  def writeOutput(projectRootFilePath: String, outputString: String) = {
+    var binDirectoryPath = Paths.get(projectRootFilePath, "./bin")
+    var outputFilePathUri = Paths.get(projectRootFilePath,"bin/output.json")
+    var binDirectory = new File(binDirectoryPath.toUri)
+    if (binDirectory.exists) {
+      FileUtils.deleteDirectory(binDirectory)
+    }
+    Files.createDirectory(binDirectoryPath)
+    Files.createFile(outputFilePathUri)
+    val outputFile = new FileWriter(outputFilePathUri.toString)
+    outputFile.write(outputString)
+    outputFile.close()
   }
 }
