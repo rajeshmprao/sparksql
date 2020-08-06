@@ -1,7 +1,7 @@
 package parseValidate
 
 import org.apache.spark.sql.SparkSession
-import java.io.File
+import java.io.{File, FileWriter}
 import java.nio.file.Paths
 
 import scala.util.matching.Regex
@@ -21,7 +21,6 @@ object Main{
 
     // change project root file path based on project file provided.
     this.projectRootFilePath = new File(filename).getParent
-    println(projectRootFilePath)
     var container = BuildContainer(
       this.buildSqlObject(filename, "schema"),
       this.buildSqlObject(filename, "table")
@@ -29,6 +28,8 @@ object Main{
     val jsonString = JsonHelper.toJSON(container)
     println(jsonString)
     println(Console.BLUE + "Build Succeeded.")
+    val outputFile = new FileWriter(Paths.get(projectRootFilePath,"./bin/output.json").toUri.toString)
+    outputFile.write(jsonString)
   }
 
   def validateProjectFile(filename: String): Unit = {
