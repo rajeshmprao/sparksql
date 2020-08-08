@@ -1,3 +1,5 @@
 package org.sahemant.common
 
-case class BuildContainer(schemas:List[SqlTable], tables: List[SqlTable])
+import java.util.Dictionary
+
+case class BuildContainer(schemas:List[SqlTable], tables: List[SqlTable], values: Map[String, String])
