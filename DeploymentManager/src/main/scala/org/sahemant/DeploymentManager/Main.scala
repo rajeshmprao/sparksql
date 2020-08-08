@@ -17,7 +17,8 @@ object Main {
     }
 
     val jsonString = args(0)
-    val buildContainer = JsonHelper.fromJSON[BuildContainer](jsonString)
+    var buildContainer = JsonHelper.fromJSON[BuildContainer](jsonString)
+    buildContainer = this.fillValues(buildContainer)
     var asyncTasks = new ListBuffer[Future[Boolean]]()
     buildContainer.tables.foreach(table => {
       val deployAsyncTask = deployTableAsync(table)
@@ -64,5 +65,24 @@ object Main {
     spark.conf.set(
       "fs.azure.account.key.teststoragemeta.dfs.core.windows.net","REPLACE WITH SECRET")
     spark
+  }
+
+  def fillValues(buildContainer: BuildContainer): BuildContainer = {
+    val replaceWithValue = (str:String) => {
+      var replacedString = str
+      buildContainer.values.keys.foreach(key => {
+        replacedString = replacedString.replaceAll(s"$$$key", buildContainer.values.get(key).toString)
+      })
+      replacedString
+    }
+    val tables = buildContainer.tables.map(table => {
+      new SqlTable(table.filepath, replaceWithValue(table.sqlString))
+    })
+
+    val schemas = buildContainer.schemas.map(schema => {
+      new SqlTable(schema.filepath, replaceWithValue(schema.sqlString))
+    })
+
+    BuildContainer(tables, schemas, buildContainer.values)
   }
 }

@@ -3,6 +3,7 @@ package parseValidate
 import org.apache.spark.sql.SparkSession
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.file.{Files, Paths}
+import java.util.Dictionary
 
 import org.apache.commons.io.FileUtils
 
@@ -10,12 +11,14 @@ import scala.util.matching.Regex
 import scala.xml.XML
 import org.sahemant.common.{BuildContainer, JsonHelper, SqlTable}
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-object Main{
-  var projectRootFilePath:String = "/"
+object Main {
+  var projectRootFilePath: String = "/"
+
   def main(args: Array[String]): Unit = {
-    if (args.length != 1){
+    if (args.length != 1) {
       throw new Exception("invalid number of arguments");
     }
     var filename = args(0)
@@ -25,7 +28,8 @@ object Main{
     this.projectRootFilePath = new File(filename).getParent
     var container = BuildContainer(
       this.buildSqlObject(filename, "schema"),
-      this.buildSqlObject(filename, "table")
+      this.buildSqlObject(filename, "table"),
+      this.getValues(filename)
     )
     val jsonString = JsonHelper.toJSON(container)
     println(jsonString)
@@ -34,14 +38,16 @@ object Main{
   }
 
   def validateProjectFile(filename: String): Unit = {
-    if(!filename.toLowerCase.endsWith(".sparksql")){
+    if (!filename.toLowerCase.endsWith(".sparksql")) {
       throw new Exception(Console.RED + s"Expected *.sparkSql file, but found $filename")
     }
   }
 
-  def buildSqlObject(projectFileName: String, objectType: String):List[SqlTable] = {
+  def buildSqlObject(projectFileName: String, objectType: String): List[SqlTable] = {
     val xml = XML.loadFile(projectFileName)
-    val project = xml \\ "project" \\ "build" \\ "Include" filter {_ \\ "@type" exists(_.text == objectType)}
+    val project = xml \\ "project" \\ "build" \\ "Include" filter {
+      _ \\ "@type" exists (_.text == objectType)
+    }
     val tableFilePaths = project.map(x => x.text)
     var errors = ListBuffer[String]()
     var tableSqlStrings = ListBuffer[SqlTable]()
@@ -52,41 +58,43 @@ object Main{
       }
       val file = new File(resolvedPath.toString)
       var files = Array(file)
-      if (file.isDirectory){
-          files = this.recursiveListFiles(file, new Regex("([^\\s]+(\\.(?i)(sql))$)"))
+      if (file.isDirectory) {
+        files = this.recursiveListFiles(file, new Regex("([^\\s]+(\\.(?i)(sql))$)"))
       }
       files.foreach(file => {
-          val absoluteFilePath = file.getAbsolutePath
-          val sqlString = scala.io.Source.fromFile(absoluteFilePath).mkString
-          try{
-            val sparkSession = this.getSparkSession
-            val plan = sparkSession.sessionState.sqlParser.parsePlan(sqlString)
-            println(Console.BLUE + s"Successfully parsed file: $absoluteFilePath")
-            tableSqlStrings  += SqlTable(absoluteFilePath, sqlString)
+        val absoluteFilePath = file.getAbsolutePath
+        val sqlString = scala.io.Source.fromFile(absoluteFilePath).mkString
+        try {
+          val sparkSession = this.getSparkSession
+          val plan = sparkSession.sessionState.sqlParser.parsePlan(sqlString)
+          println(sparkSession.version)
+          println(Console.BLUE + s"Successfully parsed file: $absoluteFilePath")
+          tableSqlStrings += SqlTable(absoluteFilePath, sqlString)
+        }
+        catch {
+          case e: Exception => {
+            val errorMessage = s"Error Parsing file: $absoluteFilePath. Error Message: ${e.getMessage}"
+            println(Console.RED + errorMessage)
+            errors += errorMessage
           }
-          catch {
-            case e: Exception => {
-              val errorMessage = s"Error Parsing file: $absoluteFilePath. Error Message: ${e.getMessage}"
-              println(Console.RED+errorMessage)
-              errors += errorMessage
-            }
-          }
+        }
       })
     })
 
-    if (errors.length > 0){
+    if (errors.length > 0) {
       throw new Exception("Build failed.")
     }
 
     tableSqlStrings.toList
   }
+
   def recursiveListFiles(f: File, r: Regex): Array[File] = {
     val these = f.listFiles
     val good = these.filter(f => r.findFirstIn(f.getName).isDefined)
-    good ++ these.filter(_.isDirectory).flatMap(recursiveListFiles(_,r))
+    good ++ these.filter(_.isDirectory).flatMap(recursiveListFiles(_, r))
   }
 
-  def getSparkSession:SparkSession = {
+  def getSparkSession: SparkSession = {
     val sparkSession = SparkSession.builder()
       .appName("parserApp")
       .master("local")
@@ -97,7 +105,7 @@ object Main{
 
   def writeOutput(projectRootFilePath: String, outputString: String) = {
     var binDirectoryPath = Paths.get(projectRootFilePath, "./bin")
-    var outputFilePathUri = Paths.get(projectRootFilePath,"bin/output.json")
+    var outputFilePathUri = Paths.get(projectRootFilePath, "bin/output.json")
     var binDirectory = new File(binDirectoryPath.toUri)
     if (binDirectory.exists) {
       FileUtils.deleteDirectory(binDirectory)
@@ -107,5 +115,21 @@ object Main{
     val outputFile = new FileWriter(outputFilePathUri.toString)
     outputFile.write(outputString)
     outputFile.close()
+  }
+
+  def getValues(filename: String): Map[String, String] = {
+    val xml = XML.loadFile(filename)
+    val project = xml \\ "project" \\ "build" \\ "Include" filter {
+      _ \\ "@type" exists (_.text == "values")
+    }
+    val valuesFilePath = project.map(x => x.text)
+    if (valuesFilePath.length != 0) {
+      val valuesAbsolutePath = Paths.get(this.projectRootFilePath, valuesFilePath(0)).toString
+      val valuesJson = scala.io.Source.fromFile(valuesAbsolutePath).mkString
+      val values = JsonHelper.fromJSON[Map[String, String]](valuesJson)
+      return values
+    }
+    val values = new mutable.HashMap[String, String].toMap
+    values
   }
 }

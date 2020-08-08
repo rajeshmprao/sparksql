@@ -11,7 +11,8 @@ import scala.util.control.Breaks.{break, breakable}
 class DeployTable(sparkSession: SparkSession) {
 
   def deploy(table: SqlTable):Unit = {
-    val sqlPlanJsonString = sparkSession.sessionState.sqlParser.parsePlan(table.sqlString).toJSON
+    val sqlPlan = sparkSession.sessionState.sqlParser.parsePlan(table.sqlString)
+    val sqlPlanJsonString = sqlPlan.toJSON
     val parsedJsonTables = JsonHelper.fromJSON[JArray](sqlPlanJsonString)
     val parsedJsonTable = parsedJsonTables(0)
 
@@ -24,9 +25,13 @@ class DeployTable(sparkSession: SparkSession) {
     }
 
     val oldTableCreateScript = this.sparkSession.sql(s"show create table $tableNameWithSchema").first().getAs[String](0)
-    val oldTablePlanJson = JsonHelper.fromJSON[JArray](this.sparkSession.sessionState.sqlParser.parsePlan(oldTableCreateScript).toJSON)
+    val oldTablePlan = this.sparkSession.sessionState.sqlParser.parsePlan(oldTableCreateScript)
+    val oldTablePlanJson = JsonHelper.fromJSON[JArray](oldTablePlan.toJSON)
     val newTableSchema = this.getTableSchema(parsedJsonTable)
     val oldTableSchema = this.getTableSchema(oldTablePlanJson(0))
+
+
+
     newTableSchema.foreach(newField => {
       breakable {
         // IF NEW COLUMN , CREATE COLUMN.
