@@ -3,7 +3,6 @@ package parseValidate
 import org.apache.spark.sql.SparkSession
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.file.{Files, Paths}
-import java.util.Dictionary
 
 import org.apache.commons.io.FileUtils
 
