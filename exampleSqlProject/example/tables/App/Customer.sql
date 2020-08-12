@@ -3,7 +3,7 @@ CREATE TABLE App.Customer
     Id int not null,
     name string,
     phonenumber string,
-    haha string,
+    haha int,
     newColumn int comment 'this is really great'
 )
 USING DELTA
