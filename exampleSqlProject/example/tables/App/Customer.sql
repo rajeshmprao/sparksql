@@ -1,7 +1,7 @@
 CREATE TABLE App.Customer
 (
     Id int not null,
-    name string,
+    name string comment 'awesome name',
     phonenumber string,
     haha string
 )
