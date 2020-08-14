@@ -34,6 +34,9 @@ object Main {
     println(jsonString)
     println(Console.BLUE + "Build Succeeded.")
     this.writeOutput(projectRootFilePath, jsonString)
+
+    this.copyDeploymentFiles(filename, "Predeployment")
+    this.copyDeploymentFiles(filename, "Postdeployment")
   }
 
   def validateProjectFile(filename: String): Unit = {
@@ -116,7 +119,7 @@ object Main {
     outputFile.close()
   }
 
-  def getValues(filename: String): Map[String, String] = {
+  private def getValues(filename: String): Map[String, String] = {
     val xml = XML.loadFile(filename)
     val project = xml \\ "project" \\ "build" \\ "Include" filter {
       _ \\ "@type" exists (_.text == "values")
@@ -130,5 +133,35 @@ object Main {
     }
     val values = new mutable.HashMap[String, String].toMap
     values
+  }
+
+  private def copyDeploymentFiles(projectFilePath: String, fileType: String): Unit ={
+    val xml = XML.loadFile(projectFilePath)
+    val project = xml \\ "project" \\ "build" \\ "Include" filter {
+      _ \\ "@type" exists (_.text == fileType)
+    }
+
+    if(project.length > 0){
+      val filePaths = project.map(x => x.text)
+
+      // there should be only one file. hence taking the top one.
+      val filePath = Paths.get(projectRootFilePath, filePaths(0))
+      val file = new File(filePath.toString)
+      if (file.isFile){
+        copyFileToBin(file, fileType)
+      }
+    }
+  }
+
+  private def copyFileToBin(sourceFile: File, binRelativeUri: String) = {
+    var binDirectoryPath = Paths.get(projectRootFilePath, s"./bin/")
+    val binDirectory = new File(binDirectoryPath.toUri)
+    if (!binDirectory.exists) {
+      Files.createDirectory(binDirectoryPath)
+    }
+
+    val filePath = Paths.get(binDirectoryPath.toAbsolutePath.toString, sourceFile.getName)
+    Files.createFile(filePath)
+    FileUtils.copyFile(sourceFile, new File(filePath.toUri))
   }
 }
