@@ -16,7 +16,7 @@ object Main {
         throw new Exception("Invalid number of arguments")
     }
 
-    val jsonString = args(0)
+    val jsonString =  args(0)
     var buildContainer = JsonHelper.fromJSON[BuildContainer](jsonString)
     buildContainer = this.fillValues(buildContainer)
     var asyncTasks = new ListBuffer[Future[Boolean]]()
@@ -61,9 +61,9 @@ object Main {
   }
 
   def getSparkSession():SparkSession = {
-    val spark = SparkSession.builder.appName("deployTest").config("spark.master", "local").getOrCreate()
+    val spark = SparkSession.builder.appName("deploy").getOrCreate()
     spark.conf.set(
-      "fs.azure.account.key.teststoragemeta.dfs.core.windows.net","REPLACE WITH SECRET")
+      "fs.azure.account.key.teststoragemeta.dfs.core.windows.net","REPLACE_WITH_SECRET")
     spark
   }
 
@@ -71,7 +71,8 @@ object Main {
     val replaceWithValue = (str:String) => {
       var replacedString = str
       buildContainer.values.keys.foreach(key => {
-        replacedString = replacedString.replaceAll(s"$$$key", buildContainer.values.get(key).toString)
+        val value = buildContainer.values.get(key).get
+        replacedString = replacedString.toString.replace("$" + key, value)
       })
       replacedString
     }
@@ -83,6 +84,6 @@ object Main {
       new SqlTable(schema.filepath, replaceWithValue(schema.sqlString))
     })
 
-    BuildContainer(tables, schemas, buildContainer.values)
+    BuildContainer(schemas, tables, buildContainer.values)
   }
 }
