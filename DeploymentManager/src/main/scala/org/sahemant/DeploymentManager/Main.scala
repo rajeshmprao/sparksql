@@ -9,7 +9,7 @@ import scala.async.Async.{async, await}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.DurationInt
 
-object Main {
+class Main {
   def main(args: Array[String]): Unit = {
     if (args.length != 1)
     {
@@ -60,7 +60,7 @@ object Main {
     f1
   }
 
-  def getSparkSession():SparkSession = {
+  var getSparkSession = () => {
     val spark = SparkSession.builder.appName("deploy").getOrCreate()
     spark.conf.set(
       "fs.azure.account.key.teststoragemeta.dfs.core.windows.net","REPLACE_WITH_SECRET")
