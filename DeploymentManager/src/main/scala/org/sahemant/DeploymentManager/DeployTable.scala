@@ -131,7 +131,7 @@ class DeployTable(sparkSession: SparkSession) {
         TableEntity(
           table.tableName.mkString("."),
           table.provider.get,
-          table.location.get,
+          if(table.location.isEmpty) null else table.location.get,
           table.tableSchema.fields.map(x => {
             SqlTableField(x.name, x.dataType.typeName, x.nullable, JsonHelper.fromJSON[Map[String, JValue]](x.metadata.json))
             }).toList,

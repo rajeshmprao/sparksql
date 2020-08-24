@@ -4,3 +4,4 @@ CREATE TABLE App.Product(
     Price double comment 'price in INR'
 )
 using delta
+location '$LAKE_PATH/App/Product'

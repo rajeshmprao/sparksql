@@ -69,7 +69,7 @@ class DeltaProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter 
   }
 
   override def changeProviderOrLocation(newTable: TableEntity, oldTable: TableEntity) = {
-    if (newTable.provider != oldTable.provider && newTable.location == oldTable.location){
+    if (!newTable.provider.equalsIgnoreCase(oldTable.provider) && newTable.location == oldTable.location){
       throw new NotSupportedException(s"Cannot change provider from ${oldTable.provider} to ${newTable.provider}")
     }
 
