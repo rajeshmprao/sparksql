@@ -3,3 +3,4 @@ CREATE TABLE App.Product(
     Name string,
     Price double comment 'price in INR'
 )
+using delta
