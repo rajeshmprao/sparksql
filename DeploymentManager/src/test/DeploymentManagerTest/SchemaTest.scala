@@ -35,7 +35,7 @@ class SchemaTest extends FunSuite
   with MockitoSugar
   with BeforeAndAfterAll{
 
-  var main = Main
+  lazy val main = Main
   var oldTableCreateScript:String = null
   lazy val sparkSessionMock:SparkSession = spy(this.spark)
 
@@ -55,7 +55,6 @@ class SchemaTest extends FunSuite
 
     // Stubbing spark sql when using show create table as local spark session doesn't give schema information.
     // sparkSessionMock =
-    this.main = Main
 
     // mock shared spark for testing.
     main.getSparkSession = () => {
@@ -282,6 +281,45 @@ class SchemaTest extends FunSuite
     val tableDesc = this.spark.sql("desc extended SchemaTest_Location")
     val locationRow = tableDesc.filter(x => x(0).toString.equalsIgnoreCase("Location")).first()
     Assert.assertTrue(locationRow(1).toString.toLowerCase.contains("external/schematest_new_location"))
+  }
+
+  test("Should fail when trying to create table in database that doesn't exist"){
+    // Arrange.
+    val buildContainer = BuildContainer(List(),
+      List(SqlTable("filePath",
+        """
+          |CREATE TABLE NoDatabase.SchemaTest_nodatabase
+          |(
+          | col1 int,
+          | col2 int
+          |)
+          |using delta
+          |location './external/SchemaTest_nodatabase'
+          |""".stripMargin))
+      , Map.empty[String, String])
+    val jsonBuildContainer = JsonHelper.toJSON(buildContainer)
+
+    // Act.
+    val exception = intercept[Exception] {
+      this.main.main(Array(jsonBuildContainer))
+    }
+
+    Assert.assertTrue(exception.getMessage.toLowerCase.contains("database 'nodatabase' not found"))
+  }
+
+  test("Should create new schema") {
+    // Arrange.
+    val buildContainer = BuildContainer(List(SqlTable("filePAth", "CREATE SCHEMA newSchema")),
+      List()
+      ,Map.empty[String, String])
+    val jsonBuildContainer = JsonHelper.toJSON(buildContainer)
+
+    // Act.
+    this.main.main(Array(jsonBuildContainer))
+
+    // Assert.
+    val databases = this.spark.sql("SHOW DATABASES LIKE 'newschema'")
+    Assert.assertTrue(databases.count() == 1)
   }
 
   ignore("Should change from nullable to not nullable") {
