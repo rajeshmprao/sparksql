@@ -7,5 +7,5 @@ OrderId int,
 region string
  )
 using delta
-PARTITIONED BY (partition_bin)
+PARTITIONED BY (region)
 location '$LAKE_PATH/App/Sales'
