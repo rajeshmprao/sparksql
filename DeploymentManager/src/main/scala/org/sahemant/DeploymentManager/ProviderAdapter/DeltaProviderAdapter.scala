@@ -36,7 +36,7 @@ class DeltaProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter 
 
         val oldField = oldTableSchema.find(x => x.name == newField.name).get
 
-        // IF OLD COLUMN AND DATA TYPE CHANGED, ALTER TABLE.
+        // IF OLD COLUMN AND DATA TYPE CHANGED, OVERWRITE TABLE.
         if (oldField.datatype != newField.datatype) {
           this.checkTypeCompatibility(oldTable.name, oldField.name, newField.datatype)
           this.sparkSession.read

@@ -35,7 +35,7 @@ class SchemaTest extends FunSuite
   with MockitoSugar
   with BeforeAndAfterAll{
 
-  var main:Main = null
+  var main = Main
   var oldTableCreateScript:String = null
   lazy val sparkSessionMock:SparkSession = spy(this.spark)
 
@@ -55,7 +55,7 @@ class SchemaTest extends FunSuite
 
     // Stubbing spark sql when using show create table as local spark session doesn't give schema information.
     // sparkSessionMock =
-    this.main = new Main()
+    this.main = Main
 
     // mock shared spark for testing.
     main.getSparkSession = () => {
@@ -362,7 +362,8 @@ class SchemaTest extends FunSuite
   }
 
   override def afterAll(): Unit = {
-    // this.cleanUp()
+    super.afterAll()
+    this.cleanUp()
   }
 
   def cleanUp() = {
