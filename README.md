@@ -1,3 +1,4 @@
+[![Build status](https://dev.azure.com/SandranaHemanth/SparkSqlManager/_apis/build/status/Spark%20Sql%20Parser)](https://dev.azure.com/SandranaHemanth/SparkSqlManager/_build/latest?definitionId=1)
 # Build and Deploy Spark SQL Tables.
   - Build and Deploy Spark SQL tables incrementally. Check for syntax errors before checking in the code to master and Deploy the changes using Continuous Deployment. This project aims to create a way to deploy spark sql tables using CI/CD and focus just on table schema changes rather than how to deploy the changes.
 
