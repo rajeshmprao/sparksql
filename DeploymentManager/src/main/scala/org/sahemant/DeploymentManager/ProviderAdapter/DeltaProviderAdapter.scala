@@ -1,15 +1,16 @@
 package org.sahemant.DeploymentManager.ProviderAdapter
 import java.io.FileNotFoundException
 import java.util.UUID.randomUUID
-
 import javax.ws.rs.NotSupportedException
+
 import net.liftweb.json.{DefaultFormats, Formats}
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.col
 import org.sahemant.DeploymentManager.DBUtilsAdapter
 import org.sahemant.DeploymentManager.Models.{SqlTableField, TableEntity}
-
 import scala.util.control.Breaks.{break, breakable}
+
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.col
+
 
 class DeltaProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter {
   override def alterSchema(newTable: TableEntity, oldTable: TableEntity): Unit = {
@@ -19,7 +20,7 @@ class DeltaProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter 
 
     val columnWithMetadata = (field: SqlTableField) => {
       var column = s"${field.name} ${field.datatype}"
-      if(field.metadata.contains("comment")){
+      if (field.metadata.contains("comment")) {
         val comment = field.metadata.get("comment").get.extract[String]
         column += " " + s"comment '$comment'"
       }
@@ -29,7 +30,7 @@ class DeltaProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter 
       breakable {
 
         // IF NEW COLUMN , CREATE COLUMN.
-        if (!oldTableSchema.exists(oldField => newField.name == oldField.name)){
+        if (!oldTableSchema.exists(oldField => newField.name == oldField.name)) {
           this.sparkSession.sql(s"ALTER TABLE ${newTable.name} ADD COLUMNS(${columnWithMetadata(newField)})")
           break;
         }
@@ -50,8 +51,8 @@ class DeltaProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter 
         }
 
         // IF COMMENT CHANGED, ALTER TABLE
-        val getComment = (field:SqlTableField) => {
-          if(field.metadata.contains("comment")){
+        val getComment = (field: SqlTableField) => {
+          if (field.metadata.contains("comment")) {
             field.metadata.get("comment").get.extract[String]
           }
           else {
@@ -61,15 +62,15 @@ class DeltaProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter 
 
         val oldComment = getComment(oldField)
         val newComment = getComment(newField)
-        if(oldComment != newComment){
+        if(oldComment != newComment) {
           this.sparkSession.sql(s"ALTER TABLE ${newTable.name} CHANGE ${newField.name} ${columnWithMetadata(newField)}")
         }
       }
     })
   }
 
-  override def changeProviderOrLocation(newTable: TableEntity, oldTable: TableEntity) = {
-    if (!newTable.provider.equalsIgnoreCase(oldTable.provider) && newTable.location == oldTable.location){
+  override def changeProviderOrLocation(newTable: TableEntity, oldTable: TableEntity): Unit = {
+    if (!newTable.provider.equalsIgnoreCase(oldTable.provider) && newTable.location == oldTable.location) {
       throw new NotSupportedException(s"Cannot change provider from ${oldTable.provider} to ${newTable.provider}")
     }
 
@@ -109,7 +110,7 @@ class DeltaProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter 
          |WHERE cast($columnName as $dataType) is null and ${columnName} is not null
          |limit 1
          |""".stripMargin)
-    if (nextDf.count >= 1){
+    if (nextDf.count >= 1) {
       val incompatibleRow = nextDf.first()
       throw new Exception(s"Incompatible Types. Cannot cast  $tableName.$columnName to $dataType - Error occurred for value - ${incompatibleRow(0).toString}")
     }

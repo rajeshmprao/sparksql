@@ -5,7 +5,7 @@ import com.databricks.dbutils_v1.DBUtilsV1
 object DBUtilsAdapter {
   var dbutilsInstance: DBUtilsV1 = dbutils
 
-  def get() = {
+  def get(): DBUtilsV1 = {
     dbutilsInstance
   }
 }

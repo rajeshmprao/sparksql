@@ -1,56 +1,33 @@
 package org.sahemant.DeploymentManager
 
 import java.util
+import java.util.Locale
 
-import net.liftweb.json.{DefaultFormats, Formats, JNothing, NoTypeHints, Serialization}
-import net.liftweb.json.JsonAST.{JArray, JValue}
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.types.{Metadata, StructField, StructType}
+import ProviderAdapter.ProviderAdapterFactory
+import net.liftweb.json.JsonAST.JValue
 import org.sahemant.DeploymentManager.Models.{SqlTableField, TableEntity}
 import org.sahemant.common.{JsonHelper, SqlTable}
-import ProviderAdapter.ProviderAdapterFactory
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 
-/*
-    Author: Hemanth
-    ############ BEGIN PSEUDOCODE ###########
-    IF NEW_TABLE:
-      CREATE TABLE
-      EXIT
-    IF OLD_PROVIDER != NEW_PROVIDER:
-      CHANGE PROVIDER
-    IF OLD_LOCATION != NEW_LOCATION:
-      CHANGE LOCATION
-    BEGIN FOREACH NEW_COLUMN IN NEW_TABLE.COLUMNS:
-      IF NEW_COLUMN NOT IN OLD_TABLE.COLUMNS:
-        CREATE COLUMN.
-        CONTINUE
-      IF NEW_COLUMN.DATATYPE != OLD_COLUMN.DATATYPE:
-        CHANGE DATATYPE.
-      IF NEW_COLUMN.METADATA != OLD_COLUMN.METADATA:
-        CHANGE METADATA.
-    END FOREACH
-    IF NEW_TABLE.PARTITION != OLD_TABLE.PARTITION:
-       CHANGE PARTITION.
- */
+import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.types.{StructField, StructType}
+
 class DeployTable(sparkSession: SparkSession) {
 
-  def deploy(table: SqlTable):Unit = {
-    val tableEntity:TableEntity = this.getTableEntityFromPlan(table.sqlString)
+  def deploy(table: SqlTable): Unit = {
+    val tableEntity: TableEntity = this.getTableEntityFromPlan(table.sqlString)
 
     // IF TABLE NOT EXISTS, CREATE TABLE AND EXIT.
-    if(!this.tableExists(tableEntity.name)){
+    if (!this.tableExists(tableEntity.name)) {
       sparkSession.sql(table.sqlString)
       return
     }
 
     val oldTableCreateScript = this.sparkSession.sql(s"show create table ${tableEntity.name}").first().getAs[String](0)
     val oldTableEntity = getTableEntityFromPlan(oldTableCreateScript)
-    var providerAdapter = ProviderAdapterFactory.getProviderAdapter(oldTableEntity.provider.toLowerCase)(this.sparkSession)
+    var providerAdapter = ProviderAdapterFactory.getProviderAdapter(oldTableEntity.provider.toLowerCase(Locale.ENGLISH))(this.sparkSession)
 
     this.sparkSession.sql(s"desc extended ${tableEntity.name}").show()
-    val providerAdapterWrapper = ProviderAdapterFactory.getProviderAdapter(tableEntity.provider.toLowerCase)
+    val providerAdapterWrapper = ProviderAdapterFactory.getProviderAdapter(tableEntity.provider.toLowerCase(Locale.ENGLISH))
     providerAdapter = providerAdapterWrapper(this.sparkSession)
 
     // ALTER SCHEMA
@@ -63,26 +40,26 @@ class DeployTable(sparkSession: SparkSession) {
     providerAdapter.changeProviderOrLocation(tableEntity, oldTableEntity)
   }
 
-  private def getTableEntityFromPlan(script: String):TableEntity = {
+  private def getTableEntityFromPlan(script: String): TableEntity = {
     val plan = sparkSession.sessionState.sqlParser.parsePlan(script)
     val className = plan.getClass.getName
     return className match {
-      case "org.apache.spark.sql.catalyst.plans.logical.CreateTableStatement" => {
+      case "org.apache.spark.sql.catalyst.plans.logical.CreateTableStatement" =>
         val table = plan.asInstanceOf[org.apache.spark.sql.catalyst.plans.logical.CreateTableStatement]
         TableEntity(
           table.tableName.mkString("."),
           table.provider.get,
-          if(table.location.isEmpty) null else table.location.get,
+          if (table.location.isEmpty) null else table.location.get,
           table.tableSchema.fields.map(x => {
             SqlTableField(x.name, x.dataType.typeName, x.nullable, JsonHelper.fromJSON[Map[String, JValue]](x.metadata.json))
             }).toList,
           script
         )
-      }
-      case "org.apache.spark.sql.execution.datasources.CreateTable" => {
+
+      case "org.apache.spark.sql.execution.datasources.CreateTable" =>
         val table = plan.asInstanceOf[org.apache.spark.sql.execution.datasources.CreateTable]
         val tableName = new util.ArrayList[String]()
-        if (!table.tableDesc.identifier.database.isEmpty){
+        if (!table.tableDesc.identifier.database.isEmpty) {
           tableName.add(table.tableDesc.identifier.database.get)
         }
         tableName.add(table.tableDesc.identifier.table)
@@ -95,11 +72,11 @@ class DeployTable(sparkSession: SparkSession) {
           }).toList,
           script
         )
-      }
+
     }
   }
 
-  private def tableExists(tableName: String):Boolean = {
+  private def tableExists(tableName: String): Boolean = {
     this.sparkSession.catalog.tableExists(tableName)
   }
 
