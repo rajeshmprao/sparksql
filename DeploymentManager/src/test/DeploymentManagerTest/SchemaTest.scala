@@ -1,15 +1,16 @@
 package DeploymentManagerTest
 
 import java.io.File
-
+import java.util.Locale
 
 import com.databricks.backend.daemon.dbutils.FileInfo
-import com.databricks.dbutils_v1.{DBUtilsV1, DatabricksCredentialUtils, DbfsUtils, LibraryUtils, MetaUtils, NotebookUtils, Preview, SecretUtils, WidgetsUtils}
+import com.databricks.dbutils_v1.{DatabricksCredentialUtils, DbfsUtils, DBUtilsV1, LibraryUtils, MetaUtils, NotebookUtils, Preview, SecretUtils, WidgetsUtils}
 import com.holdenkarau.spark.testing.{DataFrameSuiteBase, SharedSparkContext}
 import io.delta.sql.DeltaSparkSessionExtension
 import net.liftweb.json.JsonAST.JValue
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkConf
+
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.plans.logical.CreateTableStatement
@@ -36,8 +37,8 @@ class SchemaTest extends FunSuite
   with BeforeAndAfterAll{
 
   lazy val main = Main
-  var oldTableCreateScript:String = null
-  lazy val sparkSessionMock:SparkSession = spy(this.spark)
+  var oldTableCreateScript: String = null
+  lazy val sparkSessionMock: SparkSession = spy(this.spark)
 
   val sparkWarehouseDirectoryUri = "./spark-warehouse"
   val externalDirectoryUri = "./external"
@@ -52,9 +53,6 @@ class SchemaTest extends FunSuite
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-
-    // Stubbing spark sql when using show create table as local spark session doesn't give schema information.
-    // sparkSessionMock =
 
     // mock shared spark for testing.
     main.getSparkSession = () => {
@@ -280,10 +278,10 @@ class SchemaTest extends FunSuite
     // Assert.
     val tableDesc = this.spark.sql("desc extended SchemaTest_Location")
     val locationRow = tableDesc.filter(x => x(0).toString.equalsIgnoreCase("Location")).first()
-    Assert.assertTrue(locationRow(1).toString.toLowerCase.contains("external/schematest_new_location"))
+    Assert.assertTrue(locationRow(1).toString.toLowerCase(Locale.ENGLISH).contains("external/schematest_new_location"))
   }
 
-  test("Should fail when trying to create table in database that doesn't exist"){
+  test("Should fail when trying to create table in database that doesn't exist") {
     // Arrange.
     val buildContainer = BuildContainer(List(),
       List(SqlTable("filePath",
@@ -304,7 +302,7 @@ class SchemaTest extends FunSuite
       this.main.main(Array(jsonBuildContainer))
     }
 
-    Assert.assertTrue(exception.getMessage.toLowerCase.contains("database 'nodatabase' not found"))
+    Assert.assertTrue(exception.getMessage.toLowerCase(Locale.ENGLISH).contains("database 'nodatabase' not found"))
   }
 
   test("Should create new schema") {
@@ -404,11 +402,11 @@ class SchemaTest extends FunSuite
     this.cleanUp()
   }
 
-  def cleanUp() = {
+  def cleanUp(): Unit = {
     val sparkWarehouseDirectory = new File(sparkWarehouseDirectoryUri)
     val externalDirectory = new File(externalDirectoryUri)
 
-    if (sparkWarehouseDirectory.exists()){
+    if (sparkWarehouseDirectory.exists()) {
       FileUtils.deleteDirectory(sparkWarehouseDirectory)
     }
 
@@ -417,12 +415,12 @@ class SchemaTest extends FunSuite
     }
   }
 
-  def createTableWithStubShowScript(tableName: String, tableScript: String) = {
+  def createTableWithStubShowScript(tableName: String, tableScript: String): DataFrame = {
     this.spark.sql(tableScript)
     doAnswer(new Answer[DataFrame] {
       override def answer(invocationOnMock: InvocationOnMock): DataFrame = {
-        val sqlString = invocationOnMock.getArgument(0, classOf[String]).toLowerCase
-        if (sqlString.contains(s"show create table ${tableName.toLowerCase}")) {
+        val sqlString = invocationOnMock.getArgument(0, classOf[String]).toLowerCase(Locale.ENGLISH)
+        if (sqlString.contains(s"show create table ${tableName.toLowerCase(Locale.ENGLISH)}")) {
           import spark.implicits._
           return Seq((tableScript)).toDF("createtab_stmt")
         }

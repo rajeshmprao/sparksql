@@ -1,17 +1,18 @@
 package parseValidate
 
-import org.apache.spark.sql.SparkSession
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.file.{Files, Paths}
-
-import org.apache.commons.io.FileUtils
-
-import scala.util.matching.Regex
-import scala.xml.XML
-import org.sahemant.common.{BuildContainer, JsonHelper, SqlTable}
+import java.util.Locale
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.util.matching.Regex
+import scala.xml.XML
+
+import org.apache.commons.io.FileUtils
+import org.sahemant.common.{BuildContainer, JsonHelper, SqlTable}
+
+import org.apache.spark.sql.SparkSession
 
 object Main {
   var projectRootFilePath: String = "/"
@@ -40,7 +41,7 @@ object Main {
   }
 
   def validateProjectFile(filename: String): Unit = {
-    if (!filename.toLowerCase.endsWith(".sparksql")) {
+    if (!filename.toLowerCase(Locale.ENGLISH).endsWith(".sparksql")) {
       throw new Exception(Console.RED + s"Expected *.sparkSql file, but found $filename")
     }
   }
@@ -74,11 +75,10 @@ object Main {
           tableSqlStrings += SqlTable(absoluteFilePath, sqlString)
         }
         catch {
-          case e: Exception => {
+          case e: Exception =>
             val errorMessage = s"Error Parsing file: $absoluteFilePath. Error Message: ${e.getMessage}"
             println(Console.RED + errorMessage)
             errors += errorMessage
-          }
         }
       })
     })
@@ -105,7 +105,7 @@ object Main {
     sparkSession
   }
 
-  def writeOutput(projectRootFilePath: String, outputString: String) = {
+  def writeOutput(projectRootFilePath: String, outputString: String): Unit = {
     var binDirectoryPath = Paths.get(projectRootFilePath, "./bin")
     var outputFilePathUri = Paths.get(projectRootFilePath, "bin/output.json")
     var binDirectory = new File(binDirectoryPath.toUri)
@@ -135,19 +135,19 @@ object Main {
     values
   }
 
-  private def copyDeploymentFiles(projectFilePath: String, fileType: String): Unit ={
+  private def copyDeploymentFiles(projectFilePath: String, fileType: String): Unit = {
     val xml = XML.loadFile(projectFilePath)
     val project = xml \\ "project" \\ "build" \\ "Include" filter {
       _ \\ "@type" exists (_.text == fileType)
     }
 
-    if(project.length > 0){
+    if (project.length > 0) {
       val filePaths = project.map(x => x.text)
 
       // there should be only one file. hence taking the top one.
       val filePath = Paths.get(projectRootFilePath, filePaths(0))
       val file = new File(filePath.toString)
-      if (file.isFile){
+      if (file.isFile) {
         copyFileToBin(file, fileType)
       }
     }
