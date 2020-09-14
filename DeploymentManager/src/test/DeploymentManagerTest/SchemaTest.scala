@@ -55,6 +55,7 @@ class SchemaTest extends FunSuite
     super.beforeAll()
 
     // mock shared spark for testing.
+    this.spark.sql("select 1 as a")
     main.getSparkSession = () => {
       this.sparkSessionMock
     }
